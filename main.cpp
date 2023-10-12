@@ -27,17 +27,22 @@ template <std::integral T>
 // Only supports non-negative exponents.
 template <std::integral T>
 [[nodiscard]] auto FastModPow(T base, T exp, T mod) noexcept -> T {
-  T c{1};
-  T exp1{0};
-
-  while (true) {
-    ++exp1;
-    c = base * c % mod;
-
-    if (exp1 >= exp) {
-      return c;
-    }
+  if (mod == 1) {
+    return 0;
   }
+
+  T ret{1};
+  base %= mod;
+
+  while (exp > 0) {
+    if (exp % 2 == 1) {
+      ret = ret * base % mod;
+    }
+    exp >>= 1;
+    base = base * base % mod;
+  }
+
+  return ret;
 }
 
 enum class MillerRabinMode {
@@ -130,6 +135,6 @@ template <std::integral T>
 
 auto main() -> int {
   for (auto i{3ull}; i <= 50; i++) {
-    std::cout << i << ": " << MillerRabin(i, MillerRabinMode::TestRandom) << '\n';
+    std::cout << i << ": " << MillerRabin(i, MillerRabinMode::TestAll) << '\n';
   }
 }
