@@ -49,6 +49,24 @@ fn fast_mod_pow(base: &BigInt, exp: &BigInt, modulus: &BigInt) -> BigInt {
     ret
 }
 
-fn main() {
-    println!("{}", fast_mod_pow(&BigInt::from(5), &BigInt::from(2), &BigInt::from(3)));
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use num_bigint::BigInt;
+
+    #[test]
+    fn fast_pow_test() {
+        assert_eq!(
+            fast_pow(&BigInt::from(5), &BigInt::from(2)),
+            BigInt::from(25)
+        );
+    }
+
+    #[test]
+    fn fast_mod_pow_test() {
+        assert_eq!(
+            fast_mod_pow(&BigInt::from(5), &BigInt::from(2), &BigInt::from(3)),
+            BigInt::from(1)
+        );
+    }
 }
