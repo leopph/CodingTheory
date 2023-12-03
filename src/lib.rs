@@ -1,11 +1,14 @@
-use num_bigint::BigInt;
+use num::traits::One;
+use num::traits::Pow;
+use num::traits::Zero;
+use num::BigInt;
 
 fn fast_pow(base: &BigInt, exp: &BigInt) -> BigInt {
-    let zero: BigInt = BigInt::from(0);
-    let one: BigInt = BigInt::from(1);
+    let zero: BigInt = BigInt::zero();
+    let one: BigInt = BigInt::one();
 
-    if exp <= &zero {
-        return BigInt::from(0);
+    if *exp <= zero {
+        return BigInt::zero();
     }
 
     let mut mul = BigInt::from(1);
@@ -18,7 +21,7 @@ fn fast_pow(base: &BigInt, exp: &BigInt) -> BigInt {
             exp -= &one;
         }
 
-        base = base.pow(2);
+        base = Pow::pow(base, 2u8);
         exp >>= 2;
     }
 
@@ -26,14 +29,14 @@ fn fast_pow(base: &BigInt, exp: &BigInt) -> BigInt {
 }
 
 fn fast_mod_pow(base: &BigInt, exp: &BigInt, modulus: &BigInt) -> BigInt {
-    let zero: BigInt = BigInt::from(0);
-    let one: BigInt = BigInt::from(1);
+    let zero: BigInt = BigInt::zero();
+    let one: BigInt = BigInt::one();
 
-    if modulus == &zero {
+    if *modulus == zero {
         return zero;
     }
 
-    let mut ret = BigInt::from(1);
+    let mut ret = one.clone();
     let mut base = base % modulus;
     let mut exp = exp.clone();
 
@@ -43,7 +46,7 @@ fn fast_mod_pow(base: &BigInt, exp: &BigInt, modulus: &BigInt) -> BigInt {
         }
 
         exp >>= 1;
-        base = base.pow(2) % modulus;
+        base = Pow::pow(base, 2u8) % modulus;
     }
 
     ret
@@ -52,7 +55,6 @@ fn fast_mod_pow(base: &BigInt, exp: &BigInt, modulus: &BigInt) -> BigInt {
 #[cfg(test)]
 mod tests {
     use crate::*;
-    use num_bigint::BigInt;
 
     #[test]
     fn fast_pow_test() {
