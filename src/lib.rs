@@ -1,14 +1,15 @@
 use num::traits::One;
 use num::traits::Pow;
 use num::traits::Zero;
+use num::BigInt;
 use num::BigUint;
 
 fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
     let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
-    if *exp <= zero {
-        return BigUint::zero();
+    if *exp == zero {
+        return BigUint::one();
     }
 
     let mut mul = BigUint::from(1u8);
@@ -73,26 +74,28 @@ fn miller_rabin(p: &BigUint) -> bool {
 
     let m = m;
     let r = r;
-    let mut a = one.clone();
+    // We can start at 2 because 1^x mod p == 1 is always true
+    let mut a = two.clone();
 
-    // Initializing to true because a^m mod p == 1 results in a pass
-    let mut prev_was_minus_one = true;
+    'outer: while &a < &p {
+        // Initializing to true because a^m mod p == 1 is a pass
+        let mut prev_was_minus_one = true;
 
-    while &a < &p {
         for i in 0..=r {
             let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), &p);
 
             if prev_was_minus_one && x == one {
-                return true;
+                a += 1u8;
+                continue 'outer;
             }
 
             prev_was_minus_one = x == p_minus_one;
         }
 
-        a += 1u8;
+        return false;
     }
 
-    false
+    true
 }
 
 #[cfg(test)]
@@ -120,11 +123,20 @@ mod tests {
     }
 
     #[test]
-    fn miller_rabin_test() {
+    fn miller_rabin_primes() {
         for p in [
             2u16, 3, 5, 7, 23, 383, 1031, 2087, 3359, 4447, 5519, 6329, 7919,
         ] {
             assert!(miller_rabin(&p.into()));
+        }
+    }
+
+    #[test]
+    fn miller_rabin_carmichaels() {
+        for p in [
+            561u32, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
+        ] {
+            assert!(!miller_rabin(&p.into()));
         }
     }
 }
