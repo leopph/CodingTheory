@@ -54,7 +54,7 @@ pub fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint
     ret
 }
 
-pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
+pub fn miller_rabin(p: &BigUint, test_count: &BigUint) -> bool {
     let two = BigUint::from(2u8);
 
     if p == &two {
@@ -77,7 +77,9 @@ pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
 
     let one = BigUint::one();
 
-    'outer: for _ in 0..test_count {
+    let mut test_counter = zero.clone();
+
+    'outer: while test_counter < *test_count {
         let a = thread_rng().gen_biguint_range(&one, &p_minus_one);
         // Initializing to true because a^m mod p == 1 is a pass
         let mut prev_was_minus_one = true;
@@ -86,6 +88,7 @@ pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
             let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), &p);
 
             if prev_was_minus_one && x == one {
+                test_counter += 1u8;
                 continue 'outer;
             }
 
@@ -96,6 +99,10 @@ pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
     }
 
     true
+}
+
+fn get_required_miller_rabin_test_count(p: &BigUint) -> BigUint {
+    return p / 4u8 + 1u8;
 }
 
 pub fn gcd_euclid(a: &BigUint, b: &BigUint) -> BigUint {
@@ -139,19 +146,13 @@ mod tests {
         );
     }
 
-    fn get_required_miller_rabin_test_count(p: u64) -> u64 {
-        return (p as f64 * 0.26) as u64;
-    }
-
     #[test]
     fn miller_rabin_primes() {
         for p in [
             2u16, 3, 5, 7, 23, 383, 1031, 2087, 3359, 4447, 5519, 6329, 7919,
         ] {
-            assert!(miller_rabin(
-                &p.into(),
-                get_required_miller_rabin_test_count(p.into())
-            ));
+            let p: BigUint = p.into();
+            assert!(miller_rabin(&p, &get_required_miller_rabin_test_count(&p)));
         }
     }
 
@@ -160,10 +161,8 @@ mod tests {
         for p in [
             561u32, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
         ] {
-            assert!(!miller_rabin(
-                &p.into(),
-                get_required_miller_rabin_test_count(p.into())
-            ));
+            let p: BigUint = p.into();
+            assert!(!miller_rabin(&p, &get_required_miller_rabin_test_count(&p)));
         }
     }
 
