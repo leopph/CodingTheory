@@ -156,6 +156,43 @@ pub fn gcd_ext_euiclid(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
     }
 }
 
+pub fn gen_rand_prime(bit_size: u64) -> BigUint {
+    loop {
+        let tmp = thread_rng().gen_biguint(bit_size);
+        if miller_rabin(&tmp, &get_required_miller_rabin_test_count(&tmp)) {
+            break tmp;
+        }
+    }
+}
+
+pub struct RSAKeys {
+    pub n: BigUint,
+    pub e: BigUint,
+    pub d: BigUint,
+}
+
+pub fn gen_rsa_keys() -> RSAKeys {
+    const PRIME_BIT_SIZE: u64 = 16;
+    let p = gen_rand_prime(PRIME_BIT_SIZE);
+    let q = gen_rand_prime(PRIME_BIT_SIZE);
+    let n = &p * &q;
+    let fi_n = (p - 1u8) * (q - 1u8);
+    let e = BigUint::from(65537u64);
+    let d = gcd_ext_euiclid(&BigInt::from(e.clone()), &BigInt::from(fi_n))
+        .0
+        .to_biguint()
+        .unwrap();
+    RSAKeys { n, e, d }
+}
+
+pub fn rsa_encode(msg: &BigUint, e: &BigUint, n: &BigUint) -> BigUint {
+    fast_mod_pow(&msg, &e, &n)
+}
+
+pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
+    fast_mod_pow(&cyp, &d, &n)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -222,5 +259,21 @@ mod tests {
         assert_eq!(x, BigInt::from(-9));
         assert_eq!(y, BigInt::from(47));
         assert_eq!(gcd, BigInt::from(2));
+    }
+
+    #[test]
+    fn rsa_key_test() {
+        let keys = gen_rsa_keys();
+        let m = BigUint::from(65u8);
+        assert_eq!(m, fast_mod_pow(&m, &(keys.e * keys.d), &keys.n));
+    }
+
+    #[test]
+    fn rsa_encode_decode_test() {
+        let keys = gen_rsa_keys();
+        let msg = BigUint::from(65u8);
+        let cyp = rsa_encode(&msg, &keys.e, &keys.n);
+        let decoded = rsa_decode(&cyp, &keys.d, &keys.n);
+        assert_eq!(msg, decoded);
     }
 }
