@@ -1,10 +1,11 @@
+use num::bigint::RandBigInt;
 use num::traits::One;
 use num::traits::Pow;
 use num::traits::Zero;
-use num::BigInt;
 use num::BigUint;
+use rand::thread_rng;
 
-fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
+pub fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
     let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
@@ -29,7 +30,7 @@ fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
     base * mul
 }
 
-fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
+pub fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
     let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
@@ -53,7 +54,7 @@ fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
     ret
 }
 
-fn miller_rabin(p: &BigUint) -> bool {
+pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
     let two = BigUint::from(2u8);
 
     if p == &two {
@@ -61,23 +62,24 @@ fn miller_rabin(p: &BigUint) -> bool {
     }
 
     let zero = BigUint::zero();
-    let one = BigUint::one();
 
-    let p_minus_one = p - &one;
+    let p_minus_one = p - 1u8;
     let mut m = p_minus_one.clone();
     let mut r: u64 = 0;
 
-    while &m % &two == zero {
-        m /= &two;
+    while &m % 2u8 == zero {
+        m /= 2u8;
         r += 1;
     }
 
     let m = m;
     let r = r;
-    // We can start at 2 because 1^x mod p == 1 is always true
-    let mut a = two.clone();
 
-    'outer: while &a < &p {
+    let one = BigUint::one();
+    let p_minus_two = p - 2u8;
+
+    'outer: for _ in 0..test_count {
+        let a = thread_rng().gen_biguint_range(&two, &p_minus_two);
         // Initializing to true because a^m mod p == 1 is a pass
         let mut prev_was_minus_one = true;
 
@@ -85,7 +87,6 @@ fn miller_rabin(p: &BigUint) -> bool {
             let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), &p);
 
             if prev_was_minus_one && x == one {
-                a += 1u8;
                 continue 'outer;
             }
 
@@ -122,12 +123,19 @@ mod tests {
         );
     }
 
+    fn get_required_miller_rabin_test_count(p: u64) -> u64 {
+        return (p as f64 * 0.26) as u64;
+    }
+
     #[test]
     fn miller_rabin_primes() {
         for p in [
             2u16, 3, 5, 7, 23, 383, 1031, 2087, 3359, 4447, 5519, 6329, 7919,
         ] {
-            assert!(miller_rabin(&p.into()));
+            assert!(miller_rabin(
+                &p.into(),
+                get_required_miller_rabin_test_count(p.into())
+            ));
         }
     }
 
@@ -136,7 +144,10 @@ mod tests {
         for p in [
             561u32, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
         ] {
-            assert!(!miller_rabin(&p.into()));
+            assert!(!miller_rabin(
+                &p.into(),
+                get_required_miller_rabin_test_count(p.into())
+            ));
         }
     }
 }
