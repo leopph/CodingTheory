@@ -76,10 +76,9 @@ pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
     let r = r;
 
     let one = BigUint::one();
-    let p_minus_two = p - 2u8;
 
     'outer: for _ in 0..test_count {
-        let a = thread_rng().gen_biguint_range(&two, &p_minus_two);
+        let a = thread_rng().gen_biguint_range(&one, &p_minus_one);
         // Initializing to true because a^m mod p == 1 is a pass
         let mut prev_was_minus_one = true;
 
