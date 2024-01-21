@@ -98,6 +98,23 @@ pub fn miller_rabin(p: &BigUint, test_count: u64) -> bool {
     true
 }
 
+pub fn gcd_euclid(a: &BigUint, b: &BigUint) -> BigUint {
+    let zero = BigUint::zero();
+
+    let mut prev = a.clone();
+    let mut curr = b.clone();
+
+    loop {
+        let prev_prev = prev;
+        prev = curr;
+        curr = prev_prev % &prev;
+
+        if curr == zero {
+            return prev;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -147,6 +164,20 @@ mod tests {
                 &p.into(),
                 get_required_miller_rabin_test_count(p.into())
             ));
+        }
+    }
+
+    #[test]
+    fn gcd_euclid_test() {
+        for (a, b, gcd) in [
+            (2u32, 3u32, 1u32),
+            (4, 5, 1),
+            (6, 9, 3),
+            (15, 105, 15),
+            (42, 56, 14),
+            (24826148, 45296490, 526),
+        ] {
+            assert_eq!(gcd_euclid(&a.into(), &b.into()), gcd.into());
         }
     }
 }
