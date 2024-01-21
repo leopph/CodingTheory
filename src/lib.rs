@@ -2,6 +2,7 @@ use num::bigint::RandBigInt;
 use num::traits::One;
 use num::traits::Pow;
 use num::traits::Zero;
+use num::BigInt;
 use num::BigUint;
 use rand::thread_rng;
 
@@ -122,6 +123,39 @@ pub fn gcd_euclid(a: &BigUint, b: &BigUint) -> BigUint {
     }
 }
 
+pub fn gcd_ext_euiclid(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
+    let zero = BigInt::zero();
+
+    let mut r_prev = a.clone();
+    let mut r_curr = b.clone();
+
+    let mut x_prev = BigInt::one();
+    let mut x_curr = BigInt::zero();
+
+    let mut y_prev = BigInt::zero();
+    let mut y_curr = BigInt::one();
+
+    loop {
+        let q = &r_prev / &r_curr;
+
+        let r_tmp = r_curr;
+        r_curr = r_prev - &q * &r_tmp;
+        r_prev = r_tmp;
+
+        let s_tmp = x_curr;
+        x_curr = x_prev - &q * &s_tmp;
+        x_prev = s_tmp;
+
+        let t_tmp = y_curr;
+        y_curr = y_prev - &q * &t_tmp;
+        y_prev = t_tmp;
+
+        if r_curr == zero {
+            return (x_prev, y_prev, r_prev);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -178,5 +212,15 @@ mod tests {
         ] {
             assert_eq!(gcd_euclid(&a.into(), &b.into()), gcd.into());
         }
+    }
+
+    #[test]
+    fn gcd_ext_euiclid_test() {
+        let a = BigInt::from(240);
+        let b = BigInt::from(46);
+        let (x, y, gcd) = gcd_ext_euiclid(&a, &b);
+        assert_eq!(x, BigInt::from(-9));
+        assert_eq!(y, BigInt::from(47));
+        assert_eq!(gcd, BigInt::from(2));
     }
 }
