@@ -1,4 +1,5 @@
 use num::bigint::RandBigInt;
+use num::bigint::ToBigInt;
 use num::traits::One;
 use num::traits::Pow;
 use num::traits::Zero;
@@ -106,54 +107,37 @@ fn get_required_miller_rabin_test_count(p: &BigUint) -> BigUint {
     return p / 4u8 + 1u8;
 }
 
-pub fn gcd_euclid(a: &BigUint, b: &BigUint) -> BigUint {
-    let zero = BigUint::zero();
+// Extended euclidean algorithm in Z_n
+pub fn get_modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
+    let mut x_prev = BigInt::zero();
+    let mut x_curr = BigInt::one();
 
-    let mut prev = a.clone();
-    let mut curr = b.clone();
+    let mut r_prev = modulus.to_bigint().unwrap();
+    let mut r_curr = a.to_bigint().unwrap();
 
-    loop {
-        let prev_prev = prev;
-        prev = curr;
-        curr = prev_prev % &prev;
-
-        if curr == zero {
-            return prev;
-        }
-    }
-}
-
-pub fn gcd_ext_euiclid(a: &BigInt, b: &BigInt) -> (BigInt, BigInt, BigInt) {
     let zero = BigInt::zero();
 
-    let mut r_prev = a.clone();
-    let mut r_curr = b.clone();
-
-    let mut x_prev = BigInt::one();
-    let mut x_curr = BigInt::zero();
-
-    let mut y_prev = BigInt::zero();
-    let mut y_curr = BigInt::one();
-
-    loop {
+    while r_curr != zero {
         let q = &r_prev / &r_curr;
 
-        let r_tmp = r_curr;
-        r_curr = r_prev - &q * &r_tmp;
-        r_prev = r_tmp;
+        let tmp = r_curr;
+        r_curr = r_prev - &q * &tmp;
+        r_prev = tmp;
 
-        let s_tmp = x_curr;
-        x_curr = x_prev - &q * &s_tmp;
-        x_prev = s_tmp;
-
-        let t_tmp = y_curr;
-        y_curr = y_prev - &q * &t_tmp;
-        y_prev = t_tmp;
-
-        if r_curr == zero {
-            return (x_prev, y_prev, r_prev);
-        }
+        let tmp = x_curr;
+        x_curr = x_prev - &q * &tmp;
+        x_prev = tmp;
     }
+
+    if r_prev > BigInt::one() {
+        panic!("{} has no modular inverse mod {}.", a, modulus);
+    }
+
+    if x_prev < zero {
+        x_prev += modulus.to_bigint().unwrap();
+    }
+
+    x_prev.to_biguint().unwrap()
 }
 
 pub fn gen_rand_prime(bit_size: u64) -> BigUint {
@@ -178,10 +162,7 @@ pub fn gen_rsa_keys() -> RSAKeys {
     let n = &p * &q;
     let fi_n = (p - 1u8) * (q - 1u8);
     let e = BigUint::from(65537u64);
-    let d = gcd_ext_euiclid(&BigInt::from(e.clone()), &BigInt::from(fi_n))
-        .0
-        .to_biguint()
-        .unwrap();
+    let d = get_modular_inverse(&e, &fi_n);
     RSAKeys { n, e, d }
 }
 
@@ -238,40 +219,16 @@ mod tests {
     }
 
     #[test]
-    fn gcd_euclid_test() {
-        for (a, b, gcd) in [
-            (2u32, 3u32, 1u32),
-            (4, 5, 1),
-            (6, 9, 3),
-            (15, 105, 15),
-            (42, 56, 14),
-            (24826148, 45296490, 526),
-        ] {
-            assert_eq!(gcd_euclid(&a.into(), &b.into()), gcd.into());
-        }
-    }
-
-    #[test]
-    fn gcd_ext_euiclid_test() {
-        let a = BigInt::from(240);
-        let b = BigInt::from(46);
-        let (x, y, gcd) = gcd_ext_euiclid(&a, &b);
-        assert_eq!(x, BigInt::from(-9));
-        assert_eq!(y, BigInt::from(47));
-        assert_eq!(gcd, BigInt::from(2));
-    }
-
-    #[test]
     fn rsa_key_test() {
         let keys = gen_rsa_keys();
-        let m = BigUint::from(65u8);
+        let m = BigUint::from(69u8);
         assert_eq!(m, fast_mod_pow(&m, &(keys.e * keys.d), &keys.n));
     }
 
     #[test]
     fn rsa_encode_decode_test() {
         let keys = gen_rsa_keys();
-        let msg = BigUint::from(65u8);
+        let msg = BigUint::from(123u8);
         let cyp = rsa_encode(&msg, &keys.e, &keys.n);
         let decoded = rsa_decode(&cyp, &keys.d, &keys.n);
         assert_eq!(msg, decoded);
