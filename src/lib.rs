@@ -174,6 +174,53 @@ pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
     fast_mod_pow(cyp, d, n)
 }
 
+pub struct JacobiSymbol {
+    pub a: BigInt,
+    pub p: BigUint,
+}
+
+impl JacobiSymbol {
+    pub fn calc(self) -> BigInt {
+        let mut p = BigInt::from(self.p);
+        let mut a = self.a % &p;
+
+        let mut t = BigInt::one();
+        let mut r;
+
+        let zero = BigInt::zero();
+        let one = BigInt::one();
+        let three = BigInt::from(3u8);
+        let four = BigInt::from(4u8);
+        let five = BigInt::from(5u8);
+
+        while a != zero {
+            while &a % 2u8 == zero {
+                a /= 2u8;
+                r = &p % 8u8;
+
+                if r == three || r == five {
+                    t = -t;
+                }
+            }
+
+            r = p;
+            p = a;
+            a = r;
+
+            if &a % &four == three || &p % &four == three {
+                t = -t;
+            }
+            a %= &p;
+        }
+
+        if p == one {
+            t
+        } else {
+            zero
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -232,5 +279,16 @@ mod tests {
         let cyp = rsa_encode(&msg, &keys.e, &keys.n);
         let decoded = rsa_decode(&cyp, &keys.d, &keys.n);
         assert_eq!(msg, decoded);
+    }
+
+    #[test]
+    fn jacobi_symbol_test() {
+        let js = JacobiSymbol {
+            a: BigInt::from(30),
+            p: BigUint::from(37u8),
+        };
+
+        let res = js.calc();
+        assert_eq!(res, BigInt::from(1));
     }
 }
