@@ -87,7 +87,7 @@ pub fn miller_rabin(p: &BigUint, test_count: &BigUint) -> bool {
         let mut prev_was_minus_one = true;
 
         for i in 0..=r {
-            let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), &p);
+            let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), p);
 
             if prev_was_minus_one && x == one {
                 test_counter += 1u8;
@@ -104,7 +104,7 @@ pub fn miller_rabin(p: &BigUint, test_count: &BigUint) -> bool {
 }
 
 fn get_required_miller_rabin_test_count(p: &BigUint) -> BigUint {
-    return p / 4u8 + 1u8;
+    p / 4u8 + 1u8
 }
 
 // Extended euclidean algorithm in Z_n
@@ -167,11 +167,11 @@ pub fn gen_rsa_keys() -> RSAKeys {
 }
 
 pub fn rsa_encode(msg: &BigUint, e: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(&msg, &e, &n)
+    fast_mod_pow(msg, e, n)
 }
 
 pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(&cyp, &d, &n)
+    fast_mod_pow(cyp, d, n)
 }
 
 #[cfg(test)]
