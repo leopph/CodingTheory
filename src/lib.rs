@@ -5,6 +5,7 @@ use num::traits::Pow;
 use num::traits::Zero;
 use num::BigInt;
 use num::BigUint;
+use num::Integer;
 use rand::thread_rng;
 
 pub fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
@@ -103,7 +104,7 @@ pub fn miller_rabin(p: &BigUint, test_count: &BigUint) -> bool {
     true
 }
 
-fn get_required_miller_rabin_test_count(p: &BigUint) -> BigUint {
+fn get_miller_rabin_test_count(p: &BigUint) -> BigUint {
     p / 4u8 + 1u8
 }
 
@@ -143,7 +144,7 @@ pub fn get_modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
 pub fn gen_rand_prime(bit_size: u64) -> BigUint {
     loop {
         let tmp = thread_rng().gen_biguint(bit_size);
-        if miller_rabin(&tmp, &get_required_miller_rabin_test_count(&tmp)) {
+        if miller_rabin(&tmp, &get_miller_rabin_test_count(&tmp)) {
             break tmp;
         }
     }
@@ -174,21 +175,24 @@ pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
     fast_mod_pow(cyp, d, n)
 }
 
+#[derive(Clone)]
 pub struct JacobiSymbol {
     pub a: BigInt,
     pub p: BigUint,
 }
 
 impl JacobiSymbol {
-    pub fn calc(self) -> BigInt {
+    pub fn new(a: BigInt, p: BigUint) -> JacobiSymbol {
+        JacobiSymbol { a, p }
+    }
+
+    pub fn calc(self) -> i8 {
         let mut p = BigInt::from(self.p);
         let mut a = self.a % &p;
 
-        let mut t = BigInt::one();
-        let mut r;
+        let mut ret = 1;
 
         let zero = BigInt::zero();
-        let one = BigInt::one();
         let three = BigInt::from(3u8);
         let four = BigInt::from(4u8);
         let five = BigInt::from(5u8);
@@ -196,29 +200,67 @@ impl JacobiSymbol {
         while a != zero {
             while &a % 2u8 == zero {
                 a /= 2u8;
-                r = &p % 8u8;
+                let p_mod_8 = &p % 8u8;
 
-                if r == three || r == five {
-                    t = -t;
+                if p_mod_8 == three || p_mod_8 == five {
+                    ret = -ret;
                 }
             }
 
-            r = p;
-            p = a;
-            a = r;
+            std::mem::swap(&mut a, &mut p);
 
-            if &a % &four == three || &p % &four == three {
-                t = -t;
+            if &a % &four == three && &p % &four == three {
+                ret = -ret;
             }
+
             a %= &p;
         }
 
-        if p == one {
-            t
+        if p == BigInt::one() {
+            ret
         } else {
-            zero
+            0
         }
     }
+}
+
+pub fn solovay_strassen(n: &BigUint, test_count: &BigUint) -> bool {
+    let ns = BigInt::from(n.clone());
+    let one = BigInt::one();
+    let n_minus_one_over_two = (ns.clone() - 1) / 2;
+    let mut test_counter = BigUint::zero();
+
+    while test_counter < *test_count {
+        let a = loop {
+            let a = thread_rng().gen_bigint_range(&one, &ns);
+            if a.gcd(&ns) == one {
+                break a;
+            }
+        };
+
+        let mut ls = BigInt::from(JacobiSymbol::new(a.clone(), n.clone()).calc());
+        let mut expected = a.modpow(&n_minus_one_over_two, &ns);
+
+        if ls < BigInt::zero() {
+            ls += &ns;
+        }
+
+        if expected < BigInt::zero() {
+            expected += &ns;
+        }
+
+        if ls != expected {
+            return false;
+        }
+
+        test_counter += 1u8;
+    }
+
+    true
+}
+
+pub fn get_solovay_strassen_test_count(p: &BigUint) -> BigUint {
+    p / 2u8 + 1u8
 }
 
 #[cfg(test)]
@@ -245,23 +287,31 @@ mod tests {
         );
     }
 
+    fn get_real_primes() -> &'static [u16] {
+        static PRIMES: &[u16] = &[3, 5, 7, 23, 383, 1031, 2087, 3359, 4447, 5519, 6329, 7919];
+        PRIMES
+    }
+
+    fn get_carmichaels() -> &'static [u32] {
+        static CARMICHAELS: &[u32] = &[
+            561, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
+        ];
+        CARMICHAELS
+    }
+
     #[test]
     fn miller_rabin_primes() {
-        for p in [
-            2u16, 3, 5, 7, 23, 383, 1031, 2087, 3359, 4447, 5519, 6329, 7919,
-        ] {
-            let p: BigUint = p.into();
-            assert!(miller_rabin(&p, &get_required_miller_rabin_test_count(&p)));
+        for p in get_real_primes() {
+            let p = BigUint::from(*p);
+            assert!(miller_rabin(&p, &get_miller_rabin_test_count(&p)));
         }
     }
 
     #[test]
     fn miller_rabin_carmichaels() {
-        for p in [
-            561u32, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
-        ] {
-            let p: BigUint = p.into();
-            assert!(!miller_rabin(&p, &get_required_miller_rabin_test_count(&p)));
+        for p in get_carmichaels() {
+            let p: BigUint = BigUint::from(*p);
+            assert!(!miller_rabin(&p, &get_miller_rabin_test_count(&p)));
         }
     }
 
@@ -283,12 +333,29 @@ mod tests {
 
     #[test]
     fn jacobi_symbol_test() {
-        let js = JacobiSymbol {
-            a: BigInt::from(30),
-            p: BigUint::from(37u8),
-        };
+        let js = JacobiSymbol::new(BigInt::from(30), BigUint::from(37u8));
+        assert_eq!(js.calc(), 1);
+    }
 
-        let res = js.calc();
-        assert_eq!(res, BigInt::from(1));
+    #[test]
+    fn jacobi_symbol_test1() {
+        let js = JacobiSymbol::new(BigInt::from(1), BigUint::from(3u8));
+        assert_eq!(js.calc(), 1);
+    }
+
+    #[test]
+    fn solovay_strassen_primes() {
+        for p in get_real_primes() {
+            let p = BigUint::from(*p);
+            assert!(solovay_strassen(&p, &get_solovay_strassen_test_count(&p)));
+        }
+    }
+
+    #[test]
+    fn solovay_strassen_carmichaels() {
+        for p in get_carmichaels() {
+            let p = BigUint::from(*p);
+            assert!(!solovay_strassen(&p, &get_solovay_strassen_test_count(&p)));
+        }
     }
 }
