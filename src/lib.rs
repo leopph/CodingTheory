@@ -175,52 +175,40 @@ pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
     fast_mod_pow(cyp, d, n)
 }
 
-#[derive(Clone)]
-pub struct JacobiSymbol {
-    pub a: BigInt,
-    pub p: BigUint,
-}
+fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
+    let mut p = BigInt::from(denom);
+    let mut a = num % &p;
 
-impl JacobiSymbol {
-    pub fn new(a: BigInt, p: BigUint) -> JacobiSymbol {
-        JacobiSymbol { a, p }
-    }
+    let mut ret = 1;
 
-    pub fn calc(self) -> i8 {
-        let mut p = BigInt::from(self.p);
-        let mut a = self.a % &p;
+    let zero = BigInt::zero();
+    let three = BigInt::from(3u8);
+    let four = BigInt::from(4u8);
+    let five = BigInt::from(5u8);
 
-        let mut ret = 1;
+    while a != zero {
+        while &a % 2u8 == zero {
+            a /= 2u8;
+            let p_mod_8 = &p % 8u8;
 
-        let zero = BigInt::zero();
-        let three = BigInt::from(3u8);
-        let four = BigInt::from(4u8);
-        let five = BigInt::from(5u8);
-
-        while a != zero {
-            while &a % 2u8 == zero {
-                a /= 2u8;
-                let p_mod_8 = &p % 8u8;
-
-                if p_mod_8 == three || p_mod_8 == five {
-                    ret = -ret;
-                }
-            }
-
-            std::mem::swap(&mut a, &mut p);
-
-            if &a % &four == three && &p % &four == three {
+            if p_mod_8 == three || p_mod_8 == five {
                 ret = -ret;
             }
-
-            a %= &p;
         }
 
-        if p == BigInt::one() {
-            ret
-        } else {
-            0
+        std::mem::swap(&mut a, &mut p);
+
+        if &a % &four == three && &p % &four == three {
+            ret = -ret;
         }
+
+        a %= &p;
+    }
+
+    if p == BigInt::one() {
+        ret
+    } else {
+        0
     }
 }
 
@@ -238,7 +226,7 @@ pub fn solovay_strassen(n: &BigUint, test_count: &BigUint) -> bool {
             }
         };
 
-        let mut ls = BigInt::from(JacobiSymbol::new(a.clone(), n.clone()).calc());
+        let mut ls = BigInt::from(calc_jacobi_symbol(a.clone(), n.clone()));
         let mut expected = a.modpow(&n_minus_one_over_two, &ns);
 
         if ls < BigInt::zero() {
@@ -333,14 +321,12 @@ mod tests {
 
     #[test]
     fn jacobi_symbol_test() {
-        let js = JacobiSymbol::new(BigInt::from(30), BigUint::from(37u8));
-        assert_eq!(js.calc(), 1);
+        assert_eq!(calc_jacobi_symbol(BigInt::from(30), BigUint::from(37u8)), 1);
     }
 
     #[test]
     fn jacobi_symbol_test1() {
-        let js = JacobiSymbol::new(BigInt::from(1), BigUint::from(3u8));
-        assert_eq!(js.calc(), 1);
+        assert_eq!(calc_jacobi_symbol(BigInt::from(1), BigUint::from(3u8)), 1);
     }
 
     #[test]
