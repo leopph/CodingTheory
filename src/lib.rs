@@ -9,22 +9,21 @@ use num::Integer;
 use rand::thread_rng;
 
 pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
-    let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
-    if exp == zero {
-        return BigUint::one();
+    if exp.is_zero() {
+        return one;
     }
 
-    let mut mul = BigUint::from(1u8);
+    let mut mul = one.clone();
 
     while exp > one {
-        if &exp % 2u8 == one {
+        if exp.is_odd() {
             mul *= &base;
-            exp -= &one;
+            exp -= 1u8;
         }
 
-        base = Pow::pow(base, 2u8);
+        base = base.pow(2u8);
         exp >>= 2;
     }
 
@@ -32,48 +31,39 @@ pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
 }
 
 pub fn fast_mod_pow(mut base: BigUint, mut exp: BigUint, modulus: &BigUint) -> BigUint {
-    let zero: BigUint = BigUint::zero();
-    let one: BigUint = BigUint::one();
-
-    if *modulus == zero {
-        return zero;
+    if modulus.is_zero() {
+        return BigUint::zero();
     }
 
-    let mut ret = one.clone();
     base %= modulus;
+    let mut ret = BigUint::one();
 
-    while exp > zero {
-        if &exp % 2u8 == one {
+    while !exp.is_zero() {
+        if exp.is_odd() {
             ret = ret * &base % modulus;
         }
 
         exp >>= 1;
-        base = Pow::pow(base, 2u8) % modulus;
+        base = base.pow(2u8) % modulus;
     }
 
     ret
 }
 
 pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
-    let two = BigUint::from(2u8);
-
-    if p == &two {
-        return true;
-    }
-
-    let zero = BigUint::zero();
-
     let p_minus_one = p - 1u8;
-    let mut m = p_minus_one.clone();
-    let mut r: u64 = 0;
 
-    while &m % 2u8 == zero {
-        m /= 2u8;
-        r += 1;
-    }
+    let (m, r) = {
+        let mut m = p_minus_one.clone();
+        let mut r: u64 = 0;
 
-    let m = m;
-    let r = r;
+        while m.is_even() {
+            m /= 2u8;
+            r += 1;
+        }
+
+        (m, r)
+    };
 
     let one = BigUint::one();
 
@@ -83,9 +73,9 @@ pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
         let mut prev_was_minus_one = true;
 
         for i in 0..=r {
-            let x = fast_mod_pow(a.clone(), &m * &fast_pow(two.clone(), i.into()), p);
+            let x = fast_mod_pow(a.clone(), &m * fast_pow(BigUint::from(2u8), i.into()), p);
 
-            if prev_was_minus_one && x == one {
+            if prev_was_minus_one && x.is_one() {
                 continue 'outer;
             }
 
@@ -112,9 +102,7 @@ pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
     let mut r_prev = modulus.clone();
     let mut r_curr = BigInt::from(a);
 
-    let zero = BigInt::zero();
-
-    while r_curr != zero {
+    while !r_curr.is_zero() {
         let q = &r_prev / &r_curr;
 
         let tmp = r_curr;
@@ -130,11 +118,11 @@ pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
         panic!("No modular inverse.");
     }
 
-    if x_prev < zero {
+    if x_prev < BigInt::zero() {
         x_prev += modulus;
     }
 
-    x_prev.to_biguint().unwrap()
+    BigUint::try_from(x_prev).unwrap()
 }
 
 pub fn gen_rand_prime(bit_size: u64) -> BigUint {
@@ -152,23 +140,25 @@ pub struct RSAKeys {
     pub d: BigUint,
 }
 
-pub fn gen_rsa_keys() -> RSAKeys {
-    const PRIME_BIT_SIZE: u64 = 16;
-    let p = gen_rand_prime(PRIME_BIT_SIZE);
-    let q = gen_rand_prime(PRIME_BIT_SIZE);
-    let n = &p * &q;
-    let fi_n = (p - 1u8) * (q - 1u8);
-    let e = BigUint::from(65537u64);
-    let d = get_modular_inverse(e.clone(), fi_n);
-    RSAKeys { n, e, d }
+impl RSAKeys {
+    pub fn gen() -> RSAKeys {
+        const PRIME_BIT_SIZE: u64 = 16;
+        let p = gen_rand_prime(PRIME_BIT_SIZE);
+        let q = gen_rand_prime(PRIME_BIT_SIZE);
+        let n = &p * &q;
+        let fi_n = (p - 1u8) * (q - 1u8);
+        let e = BigUint::from(65537u64);
+        let d = get_modular_inverse(e.clone(), fi_n);
+        RSAKeys { n, e, d }
+    }
 }
 
-pub fn rsa_encode(msg: &BigUint, e: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(msg.clone(), e.clone(), n)
+pub fn rsa_encode(msg: BigUint, e: BigUint, n: &BigUint) -> BigUint {
+    fast_mod_pow(msg, e, n)
 }
 
-pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(cyp.clone(), d.clone(), n)
+pub fn rsa_decode(cyp: BigUint, d: BigUint, n: &BigUint) -> BigUint {
+    fast_mod_pow(cyp, d, n)
 }
 
 fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
@@ -177,15 +167,15 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
 
     let mut ret = 1;
 
-    let zero = BigInt::zero();
     let three = BigInt::from(3u8);
     let four = BigInt::from(4u8);
     let five = BigInt::from(5u8);
 
-    while a != zero {
-        while &a % 2u8 == zero {
+    while !a.is_zero() {
+        let p_mod_8 = &p % 8u8;
+
+        while a.is_even() {
             a /= 2u8;
-            let p_mod_8 = &p % 8u8;
 
             if p_mod_8 == three || p_mod_8 == five {
                 ret = -ret;
@@ -210,25 +200,26 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
 
 pub fn solovay_strassen(n: BigUint, test_count: BigUint) -> bool {
     let n = BigInt::from(n);
+    let zero = BigInt::zero();
     let one = BigInt::one();
     let n_minus_one_over_two = (n.clone() - 1) / 2;
 
     for _ in range(BigUint::zero(), test_count) {
         let a = loop {
             let a = thread_rng().gen_bigint_range(&one, &n);
-            if a.gcd(&n) == one {
+            if a.gcd(&n).is_one() {
                 break a;
             }
         };
 
-        let mut ls = BigInt::from(calc_jacobi_symbol(a.clone(), n.to_biguint().unwrap()));
         let mut expected = a.modpow(&n_minus_one_over_two, &n);
+        let mut ls = BigInt::from(calc_jacobi_symbol(a, BigUint::try_from(n.clone()).unwrap()));
 
-        if ls < BigInt::zero() {
+        if ls < zero {
             ls += &n;
         }
 
-        if expected < BigInt::zero() {
+        if expected < zero {
             expected += &n;
         }
 
@@ -294,17 +285,17 @@ mod tests {
 
     #[test]
     fn rsa_key_test() {
-        let keys = gen_rsa_keys();
+        let keys = RSAKeys::gen();
         let m = BigUint::from(69u8);
         assert_eq!(m, fast_mod_pow(m.clone(), keys.e * keys.d, &keys.n));
     }
 
     #[test]
     fn rsa_encode_decode_test() {
-        let keys = gen_rsa_keys();
+        let keys = RSAKeys::gen();
         let msg = BigUint::from(123u8);
-        let cyp = rsa_encode(&msg, &keys.e, &keys.n);
-        let decoded = rsa_decode(&cyp, &keys.d, &keys.n);
+        let cyp = rsa_encode(msg.clone(), keys.e, &keys.n);
+        let decoded = rsa_decode(cyp, keys.d, &keys.n);
         assert_eq!(msg, decoded);
     }
 
