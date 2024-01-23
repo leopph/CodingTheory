@@ -254,6 +254,43 @@ pub fn fermat_factorize(n: &BigInt) -> (BigInt, BigInt) {
     (a, b.sqrt())
 }
 
+pub fn gcd_euclid(a: BigUint, b: BigUint) -> BigUint {
+    let mut prev = a;
+    let mut curr = b;
+
+    while !curr.is_zero() {
+        let next = prev % &curr;
+        prev = curr;
+        curr = next;
+    }
+
+    prev
+}
+
+pub fn pollard_rho_factorize(n: &BigUint) -> BigUint {
+    let fun = |x: BigUint| (x.clone().pow(2u8) + 1u8) % n;
+
+    let mut v = vec![BigUint::one(), fun(BigUint::one())];
+
+    loop {
+        let last = v.last().unwrap();
+
+        for elem in v.iter().take(v.len() - 1) {
+            let diff = last - elem;
+
+            if !diff.is_zero() {
+                let gcd = gcd_euclid(n.clone(), diff);
+
+                if !gcd.is_one() {
+                    return gcd;
+                }
+            }
+        }
+
+        v.push(fun(last.clone()));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -355,5 +392,27 @@ mod tests {
         let (a, b) = fermat_factorize(&BigInt::from(517));
         assert_eq!(a, BigInt::from(29));
         assert_eq!(b, BigInt::from(18));
+    }
+
+    #[test]
+    fn gcd_euclid_test() {
+        for (a, b, gcd) in [
+            (2u32, 3u32, 1u32),
+            (4, 5, 1),
+            (6, 9, 3),
+            (15, 105, 15),
+            (42, 56, 14),
+            (24826148, 45296490, 526),
+        ] {
+            assert_eq!(gcd_euclid(a.into(), b.into()), gcd.into());
+        }
+    }
+
+    #[test]
+    fn pollard_rho_factorization() {
+        assert_eq!(
+            BigUint::from(7u8),
+            pollard_rho_factorize(&BigUint::from(91u8))
+        );
     }
 }
