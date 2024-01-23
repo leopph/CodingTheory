@@ -1,5 +1,4 @@
 use num::bigint::RandBigInt;
-use num::bigint::ToBigInt;
 use num::range;
 use num::traits::One;
 use num::traits::Pow;
@@ -9,17 +8,15 @@ use num::BigUint;
 use num::Integer;
 use rand::thread_rng;
 
-pub fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
+pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
     let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
-    if *exp == zero {
+    if exp == zero {
         return BigUint::one();
     }
 
     let mut mul = BigUint::from(1u8);
-    let mut base = base.clone();
-    let mut exp = exp.clone();
 
     while exp > one {
         if &exp % 2u8 == one {
@@ -34,7 +31,7 @@ pub fn fast_pow(base: &BigUint, exp: &BigUint) -> BigUint {
     base * mul
 }
 
-pub fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint {
+pub fn fast_mod_pow(mut base: BigUint, mut exp: BigUint, modulus: &BigUint) -> BigUint {
     let zero: BigUint = BigUint::zero();
     let one: BigUint = BigUint::one();
 
@@ -43,8 +40,7 @@ pub fn fast_mod_pow(base: &BigUint, exp: &BigUint, modulus: &BigUint) -> BigUint
     }
 
     let mut ret = one.clone();
-    let mut base = base % modulus;
-    let mut exp = exp.clone();
+    base %= modulus;
 
     while exp > zero {
         if &exp % 2u8 == one {
@@ -87,7 +83,7 @@ pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
         let mut prev_was_minus_one = true;
 
         for i in 0..=r {
-            let x = fast_mod_pow(&a, &(&m * &fast_pow(&two, &i.into())), p);
+            let x = fast_mod_pow(a.clone(), &m * &fast_pow(two.clone(), i.into()), p);
 
             if prev_was_minus_one && x == one {
                 continue 'outer;
@@ -102,17 +98,19 @@ pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
     true
 }
 
-fn get_miller_rabin_test_count(p: &BigUint) -> BigUint {
+fn get_miller_rabin_test_count(p: BigUint) -> BigUint {
     p / 4u8 + 1u8
 }
 
 // Extended euclidean algorithm in Z_n
-pub fn get_modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
+pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
+    let modulus = BigInt::from(modulus);
+
     let mut x_prev = BigInt::zero();
     let mut x_curr = BigInt::one();
 
-    let mut r_prev = modulus.to_bigint().unwrap();
-    let mut r_curr = a.to_bigint().unwrap();
+    let mut r_prev = modulus.clone();
+    let mut r_curr = BigInt::from(a);
 
     let zero = BigInt::zero();
 
@@ -129,11 +127,11 @@ pub fn get_modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
     }
 
     if r_prev > BigInt::one() {
-        panic!("{} has no modular inverse mod {}.", a, modulus);
+        panic!("No modular inverse.");
     }
 
     if x_prev < zero {
-        x_prev += modulus.to_bigint().unwrap();
+        x_prev += modulus;
     }
 
     x_prev.to_biguint().unwrap()
@@ -142,7 +140,7 @@ pub fn get_modular_inverse(a: &BigUint, modulus: &BigUint) -> BigUint {
 pub fn gen_rand_prime(bit_size: u64) -> BigUint {
     loop {
         let tmp = thread_rng().gen_biguint(bit_size);
-        if miller_rabin(&tmp, get_miller_rabin_test_count(&tmp)) {
+        if miller_rabin(&tmp, get_miller_rabin_test_count(tmp.clone())) {
             break tmp;
         }
     }
@@ -161,16 +159,16 @@ pub fn gen_rsa_keys() -> RSAKeys {
     let n = &p * &q;
     let fi_n = (p - 1u8) * (q - 1u8);
     let e = BigUint::from(65537u64);
-    let d = get_modular_inverse(&e, &fi_n);
+    let d = get_modular_inverse(e.clone(), fi_n);
     RSAKeys { n, e, d }
 }
 
 pub fn rsa_encode(msg: &BigUint, e: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(msg, e, n)
+    fast_mod_pow(msg.clone(), e.clone(), n)
 }
 
 pub fn rsa_decode(cyp: &BigUint, d: &BigUint, n: &BigUint) -> BigUint {
-    fast_mod_pow(cyp, d, n)
+    fast_mod_pow(cyp.clone(), d.clone(), n)
 }
 
 fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
@@ -210,28 +208,28 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
     }
 }
 
-pub fn solovay_strassen(n: &BigUint, test_count: BigUint) -> bool {
-    let ns = BigInt::from(n.clone());
+pub fn solovay_strassen(n: BigUint, test_count: BigUint) -> bool {
+    let n = BigInt::from(n);
     let one = BigInt::one();
-    let n_minus_one_over_two = (ns.clone() - 1) / 2;
+    let n_minus_one_over_two = (n.clone() - 1) / 2;
 
     for _ in range(BigUint::zero(), test_count) {
         let a = loop {
-            let a = thread_rng().gen_bigint_range(&one, &ns);
-            if a.gcd(&ns) == one {
+            let a = thread_rng().gen_bigint_range(&one, &n);
+            if a.gcd(&n) == one {
                 break a;
             }
         };
 
-        let mut ls = BigInt::from(calc_jacobi_symbol(a.clone(), n.clone()));
-        let mut expected = a.modpow(&n_minus_one_over_two, &ns);
+        let mut ls = BigInt::from(calc_jacobi_symbol(a.clone(), n.to_biguint().unwrap()));
+        let mut expected = a.modpow(&n_minus_one_over_two, &n);
 
         if ls < BigInt::zero() {
-            ls += &ns;
+            ls += &n;
         }
 
         if expected < BigInt::zero() {
-            expected += &ns;
+            expected += &n;
         }
 
         if ls != expected {
@@ -242,7 +240,7 @@ pub fn solovay_strassen(n: &BigUint, test_count: BigUint) -> bool {
     true
 }
 
-pub fn get_solovay_strassen_test_count(p: &BigUint) -> BigUint {
+pub fn get_solovay_strassen_test_count(p: BigUint) -> BigUint {
     p / 2u8 + 1u8
 }
 
@@ -253,7 +251,7 @@ mod tests {
     #[test]
     fn fast_pow_test() {
         assert_eq!(
-            fast_pow(&BigUint::from(5u8), &BigUint::from(2u8)),
+            fast_pow(BigUint::from(5u8), BigUint::from(2u8)),
             BigUint::from(25u8)
         );
     }
@@ -261,11 +259,7 @@ mod tests {
     #[test]
     fn fast_mod_pow_test() {
         assert_eq!(
-            fast_mod_pow(
-                &BigUint::from(5u8),
-                &BigUint::from(2u8),
-                &BigUint::from(3u8)
-            ),
+            fast_mod_pow(BigUint::from(5u8), BigUint::from(2u8), &BigUint::from(3u8)),
             BigUint::from(1u8)
         );
     }
@@ -286,7 +280,7 @@ mod tests {
     fn miller_rabin_primes() {
         for p in get_real_primes() {
             let p = BigUint::from(*p);
-            assert!(miller_rabin(&p, get_miller_rabin_test_count(&p)));
+            assert!(miller_rabin(&p, get_miller_rabin_test_count(p.clone())));
         }
     }
 
@@ -294,7 +288,7 @@ mod tests {
     fn miller_rabin_carmichaels() {
         for p in get_carmichaels() {
             let p: BigUint = BigUint::from(*p);
-            assert!(!miller_rabin(&p, get_miller_rabin_test_count(&p)));
+            assert!(!miller_rabin(&p, get_miller_rabin_test_count(p.clone())));
         }
     }
 
@@ -302,7 +296,7 @@ mod tests {
     fn rsa_key_test() {
         let keys = gen_rsa_keys();
         let m = BigUint::from(69u8);
-        assert_eq!(m, fast_mod_pow(&m, &(keys.e * keys.d), &keys.n));
+        assert_eq!(m, fast_mod_pow(m.clone(), keys.e * keys.d, &keys.n));
     }
 
     #[test]
@@ -328,7 +322,10 @@ mod tests {
     fn solovay_strassen_primes() {
         for p in get_real_primes() {
             let p = BigUint::from(*p);
-            assert!(solovay_strassen(&p, get_solovay_strassen_test_count(&p)));
+            assert!(solovay_strassen(
+                p.clone(),
+                get_solovay_strassen_test_count(p)
+            ));
         }
     }
 
@@ -336,7 +333,10 @@ mod tests {
     fn solovay_strassen_carmichaels() {
         for p in get_carmichaels() {
             let p = BigUint::from(*p);
-            assert!(!solovay_strassen(&p, get_solovay_strassen_test_count(&p)));
+            assert!(!solovay_strassen(
+                p.clone(),
+                get_solovay_strassen_test_count(p)
+            ));
         }
     }
 }
