@@ -88,8 +88,8 @@ pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
     true
 }
 
-fn get_miller_rabin_test_count(p: BigUint) -> BigUint {
-    p / 4u8 + 1u8
+fn get_miller_rabin_test_count() -> BigUint {
+    BigUint::from(100u8)
 }
 
 // Extended euclidean algorithm in Z_n
@@ -125,10 +125,10 @@ pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
     BigUint::try_from(x_prev).unwrap()
 }
 
-pub fn gen_rand_prime(bit_size: u64) -> BigUint {
+pub fn gen_rand_prob_prime(bit_size: u64) -> BigUint {
     loop {
         let tmp = thread_rng().gen_biguint(bit_size);
-        if miller_rabin(&tmp, get_miller_rabin_test_count(tmp.clone())) {
+        if miller_rabin(&tmp, get_miller_rabin_test_count()) {
             break tmp;
         }
     }
@@ -143,8 +143,8 @@ pub struct RSAKeys {
 impl RSAKeys {
     pub fn gen() -> RSAKeys {
         const PRIME_BIT_SIZE: u64 = 16;
-        let p = gen_rand_prime(PRIME_BIT_SIZE);
-        let q = gen_rand_prime(PRIME_BIT_SIZE);
+        let p = gen_rand_prob_prime(PRIME_BIT_SIZE);
+        let q = gen_rand_prob_prime(PRIME_BIT_SIZE);
         let n = &p * &q;
         let fi_n = (p - 1u8) * (q - 1u8);
         let e = BigUint::from(65537u64);
@@ -327,7 +327,7 @@ mod tests {
     fn miller_rabin_primes() {
         for p in get_real_primes() {
             let p = BigUint::from(*p);
-            assert!(miller_rabin(&p, get_miller_rabin_test_count(p.clone())));
+            assert!(miller_rabin(&p, get_miller_rabin_test_count()));
         }
     }
 
@@ -335,7 +335,7 @@ mod tests {
     fn miller_rabin_carmichaels() {
         for p in get_carmichaels() {
             let p: BigUint = BigUint::from(*p);
-            assert!(!miller_rabin(&p, get_miller_rabin_test_count(p.clone())));
+            assert!(!miller_rabin(&p, get_miller_rabin_test_count()));
         }
     }
 
