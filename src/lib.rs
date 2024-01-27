@@ -142,7 +142,7 @@ pub struct RSAKeys {
 
 impl RSAKeys {
     pub fn gen() -> RSAKeys {
-        const PRIME_BIT_SIZE: u64 = 16;
+        const PRIME_BIT_SIZE: u64 = 512;
         let p = gen_rand_prob_prime(PRIME_BIT_SIZE);
         let q = gen_rand_prob_prime(PRIME_BIT_SIZE);
         let n = &p * &q;
