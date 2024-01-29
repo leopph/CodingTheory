@@ -279,26 +279,29 @@ pub fn gcd_euclid(a: BigUint, b: BigUint) -> BigUint {
 }
 
 pub fn pollard_rho_factorize(n: &BigUint) -> BigUint {
-    let fun = |x: BigUint| (x.clone().pow(2u8) + 1u8) % n;
+    let fun = |x: BigUint| (x.pow(2u8) + 1u8) % n;
 
-    let mut v = vec![BigUint::one(), fun(BigUint::one())];
+    let mut elems = vec![BigUint::one()];
+    let mut j = 0usize;
 
     loop {
-        let last = v.last().unwrap();
+        elems.push(fun(elems[j].clone()));
+        j += 1usize;
 
-        for elem in v.iter().take(v.len() - 1) {
-            let diff = last - elem;
+        let i = 2usize.pow(j.ilog2()) - 1;
 
-            if !diff.is_zero() {
-                let gcd = gcd_euclid(n.clone(), diff);
+        let last_elem = &elems[j];
+        let cmp_elem = &elems[i];
 
-                if !gcd.is_one() {
-                    return gcd;
-                }
+        let diff = last_elem.max(cmp_elem) - last_elem.min(cmp_elem);
+
+        if !diff.is_zero() {
+            let gcd = gcd_euclid(n.clone(), diff);
+
+            if !gcd.is_one() {
+                return gcd;
             }
         }
-
-        v.push(fun(last.clone()));
     }
 }
 
@@ -421,9 +424,12 @@ mod tests {
 
     #[test]
     fn pollard_rho_factorization() {
-        assert_eq!(
-            BigUint::from(7u8),
-            pollard_rho_factorize(&BigUint::from(91u8))
-        );
+        for (num, factor) in [
+            (BigUint::from(91u8), BigUint::from(7u8)),
+            (BigUint::from(8051u16), BigUint::from(97u8)),
+            (BigUint::from(10403u16), BigUint::from(101u8)),
+        ] {
+            assert_eq!(factor, pollard_rho_factorize(&num));
+        }
     }
 }
