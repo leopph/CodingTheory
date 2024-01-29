@@ -6,6 +6,7 @@ use num::traits::Zero;
 use num::BigInt;
 use num::BigUint;
 use num::Integer;
+use num::Signed;
 use rand::thread_rng;
 
 pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
@@ -163,7 +164,7 @@ pub fn rsa_decode(cyp: BigUint, d: BigUint, n: &BigUint) -> BigUint {
 
 fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
     let mut p = BigInt::from(denom);
-    let mut a = num % &p;
+    let mut a = num;
 
     let mut ret = 1;
 
@@ -171,7 +172,17 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
     let four = BigInt::from(4u8);
     let five = BigInt::from(5u8);
 
-    while !a.is_zero() {
+    loop {
+        if a.is_negative() {
+            a = -a;
+
+            if &p % &four == three {
+                ret = -ret;
+            }
+        }
+
+        a %= &p;
+
         let p_mod_8 = &p % 8u8;
 
         while a.is_even() {
@@ -182,19 +193,19 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
             }
         }
 
-        std::mem::swap(&mut a, &mut p);
+        if a.is_zero() {
+            break 0;
+        }
+
+        if a.is_one() {
+            break ret;
+        }
 
         if &a % &four == three && &p % &four == three {
             ret = -ret;
         }
 
-        a %= &p;
-    }
-
-    if p == BigInt::one() {
-        ret
-    } else {
-        0
+        std::mem::swap(&mut a, &mut p);
     }
 }
 
