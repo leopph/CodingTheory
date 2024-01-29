@@ -154,11 +154,11 @@ impl RSAKeys {
     }
 }
 
-pub fn rsa_encode(msg: BigUint, e: BigUint, n: &BigUint) -> BigUint {
+pub fn rsa_encrypt(msg: BigUint, e: BigUint, n: &BigUint) -> BigUint {
     fast_mod_pow(msg, e, n)
 }
 
-pub fn rsa_decode(cyp: BigUint, d: BigUint, n: &BigUint) -> BigUint {
+pub fn rsa_decrypt(cyp: BigUint, d: BigUint, n: &BigUint) -> BigUint {
     fast_mod_pow(cyp, d, n)
 }
 
@@ -361,12 +361,12 @@ mod tests {
     }
 
     #[test]
-    fn rsa_encode_decode_test() {
+    fn rsa_encrypt_decrypt_test() {
         let keys = RSAKeys::gen();
         let msg = BigUint::from(123u8);
-        let cyp = rsa_encode(msg.clone(), keys.e, &keys.n);
-        let decoded = rsa_decode(cyp, keys.d, &keys.n);
-        assert_eq!(msg, decoded);
+        let encrypted = rsa_encrypt(msg.clone(), keys.e, &keys.n);
+        let decrypted = rsa_decrypt(encrypted, keys.d, &keys.n);
+        assert_eq!(msg, decrypted);
     }
 
     #[test]
