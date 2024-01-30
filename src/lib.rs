@@ -238,10 +238,6 @@ pub fn solovay_strassen(n: BigUint, test_count: BigUint) -> bool {
     true
 }
 
-pub fn get_solovay_strassen_test_count(p: BigUint) -> BigUint {
-    p / 2u8 + 1u8
-}
-
 pub fn fermat_factorize(n: &BigInt) -> (BigInt, BigInt) {
     let mut a = {
         let mut root = n.sqrt();
@@ -371,12 +367,16 @@ mod tests {
 
     #[test]
     fn jacobi_symbol_test() {
-        assert_eq!(calc_jacobi_symbol(BigInt::from(30), BigUint::from(37u8)), 1);
+        for (num, denom, res) in [
+            (BigInt::from(30), BigUint::from(37u8), 1),
+            (BigInt::from(1), BigUint::from(3u8), 1),
+        ] {
+            assert_eq!(calc_jacobi_symbol(num, denom), res);
+        }
     }
 
-    #[test]
-    fn jacobi_symbol_test1() {
-        assert_eq!(calc_jacobi_symbol(BigInt::from(1), BigUint::from(3u8)), 1);
+    pub fn get_solovay_strassen_test_count(p: BigUint) -> BigUint {
+        p / 2u8 + 1u8
     }
 
     #[test]
