@@ -10,6 +10,5 @@ There are implementations for
 - RSA key generation, encryption, and decryption
 - Calculating Jacobi symbols
 - Solovay–Strassen primality test
-- Fermat factorization
 - GCD using the Euclidean algorithm
 - Pollard's rho algorithm for factorization

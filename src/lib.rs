@@ -235,25 +235,6 @@ pub fn solovay_strassen(mut candidate: BigUint, test_count: BigUint) -> bool {
     true
 }
 
-pub fn fermat_factorize(n: &BigInt) -> (BigInt, BigInt) {
-    let mut a = {
-        let mut root = n.sqrt();
-        if root.clone().pow(2u8) != *n {
-            root += 1;
-        }
-        root
-    };
-
-    let mut b = a.clone().pow(2u8) - n;
-
-    while b.sqrt().pow(2u8) != b {
-        a += 1;
-        b = a.clone().pow(2u8) - n;
-    }
-
-    (a, b.sqrt())
-}
-
 pub fn gcd_euclid(a: BigUint, b: BigUint) -> BigUint {
     let mut prev = a;
     let mut curr = b;
@@ -396,13 +377,6 @@ mod tests {
                 get_solovay_strassen_test_count(p)
             ));
         }
-    }
-
-    #[test]
-    fn fermat_factorization() {
-        let (a, b) = fermat_factorize(&BigInt::from(517));
-        assert_eq!(a, BigInt::from(29));
-        assert_eq!(b, BigInt::from(18));
     }
 
     #[test]
