@@ -1,5 +1,6 @@
 use num::bigint::RandBigInt;
 use num::range;
+use num::traits::Euclid;
 use num::traits::One;
 use num::traits::Pow;
 use num::traits::Zero;
@@ -205,32 +206,28 @@ fn calc_jacobi_symbol(num: BigInt, denom: BigUint) -> i8 {
     }
 }
 
-pub fn solovay_strassen(n: BigUint, test_count: BigUint) -> bool {
-    let n = BigInt::from(n);
-    let zero = BigInt::zero();
-    let one = BigInt::one();
-    let n_minus_one_over_two = (n.clone() - 1) / 2;
+pub fn solovay_strassen(mut candidate: BigUint, test_count: BigUint) -> bool {
+    let one = BigUint::one();
 
     for _ in range(BigUint::zero(), test_count) {
         let a = loop {
-            let a = thread_rng().gen_bigint_range(&one, &n);
-            if a.gcd(&n).is_one() {
-                break a;
+            let rand = thread_rng().gen_biguint_range(&one, &candidate);
+            if gcd_euclid(rand.clone(), candidate.clone()).is_one() {
+                break rand;
             }
         };
 
-        let mut expected = a.modpow(&n_minus_one_over_two, &n);
-        let mut ls = BigInt::from(calc_jacobi_symbol(a, BigUint::try_from(n.clone()).unwrap()));
+        let denom = candidate.clone();
+        let candidate_signed: BigInt = candidate.into();
+        let jacobi: BigUint = BigInt::from(calc_jacobi_symbol(a.clone().into(), denom))
+            .rem_euclid(&candidate_signed)
+            .try_into()
+            .unwrap();
 
-        if ls < zero {
-            ls += &n;
-        }
+        candidate = candidate_signed.try_into().unwrap();
+        let expected = fast_mod_pow(a, (&candidate - 1u8) / 2u8, &candidate);
 
-        if expected < zero {
-            expected += &n;
-        }
-
-        if ls != expected {
+        if jacobi != expected {
             return false;
         }
     }
