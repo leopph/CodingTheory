@@ -89,10 +89,6 @@ pub fn miller_rabin(p: &BigUint, test_count: BigUint) -> bool {
     true
 }
 
-fn get_miller_rabin_test_count() -> BigUint {
-    BigUint::from(100u8)
-}
-
 // Extended euclidean algorithm in Z_n
 pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
     let modulus = BigInt::from(modulus);
@@ -129,7 +125,7 @@ pub fn get_modular_inverse(a: BigUint, modulus: BigUint) -> BigUint {
 pub fn gen_rand_prob_prime(bit_size: u64) -> BigUint {
     loop {
         let tmp = thread_rng().gen_biguint(bit_size);
-        if miller_rabin(&tmp, get_miller_rabin_test_count()) {
+        if tmp.is_odd() && miller_rabin(&tmp, 100u8.into()) {
             break tmp;
         }
     }
@@ -335,6 +331,10 @@ mod tests {
             561, 1105, 2465, 6601, 8911, 10585, 15841, 46657, 62745, 75361,
         ];
         CARMICHAELS
+    }
+
+    fn get_miller_rabin_test_count() -> BigUint {
+        BigUint::from(100u8)
     }
 
     #[test]
