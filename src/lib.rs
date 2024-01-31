@@ -11,10 +11,6 @@ use num::Signed;
 use rand::thread_rng;
 
 pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
-    if exp.is_zero() {
-        return BigUint::one();
-    }
-
     let mut ret = BigUint::one();
 
     while !exp.is_zero() {
@@ -31,6 +27,10 @@ pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
 
 pub fn fast_mod_pow(mut base: BigUint, mut exp: BigUint, modulus: &BigUint) -> BigUint {
     if modulus.is_zero() {
+        panic!("Modulus was zero.");
+    }
+
+    if modulus.is_one() {
         return BigUint::zero();
     }
 
@@ -279,23 +279,32 @@ mod tests {
     #[test]
     fn fast_pow_test() {
         for (base, exp, res) in [
-            (5u8.into(), 2u8.into(), 25u8.into()),
+            (21u8.into(), 0u8.into(), 1u8.into()),
             (2u8.into(), 16u8.into(), 65536u32.into()),
-        ] as [(BigUint, BigUint, BigUint); 2]
+            (5u8.into(), 5u8.into(), 3125u16.into()),
+        ] as [(BigUint, BigUint, BigUint); 3]
         {
             assert_eq!(fast_pow(base, exp), res);
         }
     }
 
     #[test]
-    fn fast_mod_pow_test() {
+    fn fast_mod_pow_non_zero_mod_test() {
         for (base, exp, modulus, res) in [
-            (5u8.into(), 2u8.into(), 3u8.into(), 1u8.into()),
+            (3u8.into(), 12u8.into(), 1u8.into(), 0u8.into()),
+            (21u8.into(), 0u8.into(), 17u8.into(), 1u8.into()),
             (2u8.into(), 16u8.into(), 7u8.into(), 2u8.into()),
-        ] as [(BigUint, BigUint, BigUint, BigUint); 2]
+            (5u8.into(), 5u8.into(), 12u8.into(), 5u8.into()),
+        ] as [(BigUint, BigUint, BigUint, BigUint); 4]
         {
             assert_eq!(fast_mod_pow(base, exp, &modulus), res);
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn fast_mod_pow_zero_mod_test() {
+        fast_mod_pow(0u8.into(), 0u8.into(), &0u8.into());
     }
 
     fn get_real_primes() -> &'static [u16] {
