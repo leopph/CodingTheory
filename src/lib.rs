@@ -11,25 +11,22 @@ use num::Signed;
 use rand::thread_rng;
 
 pub fn fast_pow(mut base: BigUint, mut exp: BigUint) -> BigUint {
-    let one: BigUint = BigUint::one();
-
     if exp.is_zero() {
-        return one;
+        return BigUint::one();
     }
 
-    let mut mul = one.clone();
+    let mut ret = BigUint::one();
 
-    while exp > one {
+    while !exp.is_zero() {
         if exp.is_odd() {
-            mul *= &base;
-            exp -= 1u8;
+            ret *= &base;
         }
 
         base = base.pow(2u8);
-        exp >>= 2;
+        exp >>= 1;
     }
 
-    base * mul
+    ret
 }
 
 pub fn fast_mod_pow(mut base: BigUint, mut exp: BigUint, modulus: &BigUint) -> BigUint {
@@ -37,16 +34,16 @@ pub fn fast_mod_pow(mut base: BigUint, mut exp: BigUint, modulus: &BigUint) -> B
         return BigUint::zero();
     }
 
-    base %= modulus;
     let mut ret = BigUint::one();
+    base %= modulus;
 
     while !exp.is_zero() {
         if exp.is_odd() {
             ret = ret * &base % modulus;
         }
 
-        exp >>= 1;
         base = base.pow(2u8) % modulus;
+        exp >>= 1;
     }
 
     ret
@@ -281,18 +278,24 @@ mod tests {
 
     #[test]
     fn fast_pow_test() {
-        assert_eq!(
-            fast_pow(BigUint::from(5u8), BigUint::from(2u8)),
-            BigUint::from(25u8)
-        );
+        for (base, exp, res) in [
+            (5u8.into(), 2u8.into(), 25u8.into()),
+            (2u8.into(), 16u8.into(), 65536u32.into()),
+        ] as [(BigUint, BigUint, BigUint); 2]
+        {
+            assert_eq!(fast_pow(base, exp), res);
+        }
     }
 
     #[test]
     fn fast_mod_pow_test() {
-        assert_eq!(
-            fast_mod_pow(BigUint::from(5u8), BigUint::from(2u8), &BigUint::from(3u8)),
-            BigUint::from(1u8)
-        );
+        for (base, exp, modulus, res) in [
+            (5u8.into(), 2u8.into(), 3u8.into(), 1u8.into()),
+            (2u8.into(), 16u8.into(), 7u8.into(), 2u8.into()),
+        ] as [(BigUint, BigUint, BigUint, BigUint); 2]
+        {
+            assert_eq!(fast_mod_pow(base, exp, &modulus), res);
+        }
     }
 
     fn get_real_primes() -> &'static [u16] {
